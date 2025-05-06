@@ -56,7 +56,7 @@ def print_tree(
         for record in data:
             # Use 'platform' or 'source' as the subtree label
             platform = record.get("platform") or record.get("source") or "NaN"
-            node = root.add(platform)
+            node = root.add(platform.capitalize())
             _build_tree(record=record, parent=node, exclude_keys={"platform"})
 
     rprint(root)
