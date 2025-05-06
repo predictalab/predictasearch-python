@@ -9,7 +9,6 @@ from .__lib import parse_network_filters, print_tree, rprint
 client = PredictaSearch(api_key=os.environ.get("PREDICTA_API_KEY"))
 
 
-
 @click.group()
 @click.option(
     "--filter",

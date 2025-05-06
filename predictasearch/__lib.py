@@ -4,7 +4,6 @@ from typing import Dict, Any, Optional, Set
 from rich.tree import Tree
 
 
-
 def parse_network_filters(value: Optional[str]) -> Optional[List[str]]:
     """
     Parse a comma-separated string into a list of network names.
