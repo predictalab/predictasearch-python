@@ -1,27 +1,13 @@
-import json
 import os
 from typing import Optional, List, Dict
 
 import rich_click as click
-from rich.pretty import pprint
 
 from .__api import PredictaSearch
-
+from .__lib import parse_network_filters, print_tree, rprint
 
 client = PredictaSearch(api_key=os.environ.get("PREDICTA_API_KEY"))
 
-def parse_network_filters(value: Optional[str]) -> Optional[List[str]]:
-    """
-    Parse a comma-separated string into a list of network names.
-
-    :param value: A string of comma-separated network names (e.g., "facebook,linkedin")
-    :type value: Optional[str
-    :return: A list of cleaned network names or None if no input provided
-    :rtype: Optional[List[str]]
-    """
-    if value is None:
-        return None
-    return [network.strip() for network in value.split(",") if network.strip()]
 
 
 @click.group()
@@ -31,8 +17,13 @@ def parse_network_filters(value: Optional[str]) -> Optional[List[str]]:
     help="A comma-separated "
          "list of networks to filter the (email|phone) search (e.g., facebook,linkedin)."
 )
+@click.option(
+    "--pretty",
+    type=bool,
+    help="Return results in raw JSON format."
+)
 @click.pass_context
-def cli(ctx: click.Context, filter: Optional[str]):
+def cli(ctx: click.Context, filter: Optional[str], pretty: Optional[bool]):
     """
     PredictaSearch CLI
 
@@ -40,6 +31,7 @@ def cli(ctx: click.Context, filter: Optional[str]):
     """
     ctx.ensure_object(dict)
     ctx.obj["filter"] = filter
+    ctx.obj["pretty"] = pretty
 
 
 @cli.command()
@@ -51,9 +43,12 @@ def email(ctx: click.Context, email: str):
 
     e.g., predictasearch email johndoe@gmail.com --filter facebook,linkedin
     """
-    parsed_networks: Optional[List[str]] = parse_network_filters(value=ctx.obj["filter"])
+    parsed_networks: Optional[List[str]] = parse_network_filters(value=ctx.obj.get("filter"))
     results: List = client.search_by_email(email=email, networks=parsed_networks)
-    pprint(results)
+    if ctx.obj.get("pretty"):
+        rprint(results)
+    else:
+        print_tree(root_label=email, data=results)
 
 
 @cli.command()
@@ -65,17 +60,25 @@ def phone(ctx: click.Context, phone: str):
 
     e.g., predictasearch phone +1234567890 --filter facebook,tiktok
     """
-    parsed_networks: Optional[List[str]] = parse_network_filters(value=ctx.obj["filter"])
+    parsed_networks: Optional[List[str]] = parse_network_filters(value=ctx.obj.get("filter"))
     results: List = client.search_by_phone(phone=phone, networks=parsed_networks)
-    pprint(results)
+    if ctx.obj.get("pretty"):
+        rprint(results)
+    else:
+        print_tree(root_label=phone, data=results)
 
 
 @cli.command()
-def networks():
+@click.pass_context
+def networks(ctx: click.Context):
     """
     Retrieve a list of supported networks.
 
     e.g., predictasearch networks
     """
     results: Dict = client.get_supported_networks()
-    pprint(results)
+    if ctx.obj.get("pretty"):
+        rprint(results)
+    else:
+        print_tree(root_label="Networks", data=results)
+

@@ -1,5 +1,5 @@
 import requests
-from typing import Literal, Optional
+from typing import Literal, Optional, List, Dict
 
 
 class PredictaSearch:
@@ -33,7 +33,7 @@ class PredictaSearch:
         self.api_key: str = api_key
         self.headers: dict = {"x-api-key": self.api_key}
 
-    def search(self, query: str, query_type: Literal["email", "phone"], networks: Optional[list[str]] = None) -> list:
+    def search(self, query: str, query_type: Literal["email", "phone"], networks: Optional[list[str]] = None) -> List:
         """
         Executes a search query against the API with the provided parameters. This method allows querying
         based on a specific type and optionally limits the search scope to a set of networks.
@@ -67,7 +67,7 @@ class PredictaSearch:
 
         return response.json()
 
-    def search_by_email(self, email: str, networks: Optional[list[str]] = None) -> list:
+    def search_by_email(self, email: str, networks: Optional[list[str]] = None) -> List:
         """
         Search for records based on a given email address and optionally limited to a list
         of networks.
@@ -87,7 +87,7 @@ class PredictaSearch:
         """
         return self.search(query=email, query_type="email", networks=networks)
 
-    def search_by_phone(self, phone: str, networks: Optional[list[str]] = None) -> list:
+    def search_by_phone(self, phone: str, networks: Optional[list[str]] = None) -> List:
         """
         Search for records by phone number and optionally limited to a list
         of networks.
@@ -107,7 +107,7 @@ class PredictaSearch:
         """
         return self.search(query=phone, query_type="phone", networks=networks)
 
-    def get_supported_networks(self) -> dict:
+    def get_supported_networks(self) -> Dict:
         """
         Fetch the list of supported networks from the API.
 
