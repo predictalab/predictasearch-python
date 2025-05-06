@@ -39,7 +39,6 @@ def print_tree(
     """
     if not data:
         print("No results found.")
-        return
 
     # Create the root of the tree
     root = Tree(label=root_label, guide_style="bright_blue", highlight=True)
