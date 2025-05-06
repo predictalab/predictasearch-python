@@ -22,7 +22,7 @@ Hopefully these changes are helpful to other users and contributors :)
 ## Restructured Codebase
 
 - Split the code into private modules:
-  - `__api.py` — PredictaSearch API client.
+  - `__api.py` — PredictaSearch API client (contains code that was previously in `__init__.py`).
   - `__cli.py` — CLI commands and logic.
   - `__lib.py` — Utility functions (e.g., rendering and argument parsing).
   - `__init__.py` — Clean import access.
