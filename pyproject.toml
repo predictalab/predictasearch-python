@@ -14,11 +14,17 @@ authors = [
 license = { text = "MIT" }
 dependencies = [
     "requests >= 2.32.3",
-    "click >= 8.1.0"
+    "rich-click >= 1.8.8"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest >=7.4.0",
+    "pytest-mock >=3.12.0"
 ]
 
 [project.urls]
-Homepage = "https://github.com/predictalab/predictasearch-python"
+Homepage = "https://predictasearch.com"
 Repository = "https://github.com/predictalab/predictasearch-python"
 Issues = "https://github.com/predictalab/predictasearch-python/issues"
 

@@ -3,6 +3,7 @@ import os
 from typing import Optional, List, Dict
 
 import rich_click as click
+from rich.pretty import pprint
 
 from .__api import PredictaSearch
 
@@ -36,11 +37,6 @@ def cli(ctx: click.Context, filter: Optional[str]):
     PredictaSearch CLI
 
     Get the digital footprint from an email or phone number.
-
-    :param ctx: Click context used to share state across commands
-    :type ctx: click.Context
-    :param filter: Comma-separated list of networks to filter the search
-    :type filter: Optional[str]
     """
     ctx.ensure_object(dict)
     ctx.obj["filter"] = filter
@@ -54,15 +50,10 @@ def email(ctx: click.Context, email: str):
     Search for a digital footprint using an EMAIL address.
 
     e.g., predictasearch email johndoe@gmail.com --filter facebook,linkedin
-
-    :param ctx: Click context with shared state (including network filter)
-    :type ctx: click.Context
-    :param email: The email address to search
-    :type email: str
     """
     parsed_networks: Optional[List[str]] = parse_network_filters(value=ctx.obj["filter"])
     results: List = client.search_by_email(email=email, networks=parsed_networks)
-    click.echo(json.dumps(obj=results, indent=4))
+    pprint(results)
 
 
 @cli.command()
@@ -73,15 +64,10 @@ def phone(ctx: click.Context, phone: str):
     Search for a digital footprint using a PHONE number.
 
     e.g., predictasearch phone +1234567890 --filter facebook,tiktok
-
-    :param ctx: Click context with shared state (including network filter)
-    :type ctx: click.Context
-    :param phone: The phone number to search
-    :type phone: str
     """
     parsed_networks: Optional[List[str]] = parse_network_filters(value=ctx.obj["filter"])
     results: List = client.search_by_phone(phone=phone, networks=parsed_networks)
-    click.echo(json.dumps(obj=results, indent=4))
+    pprint(results)
 
 
 @cli.command()
@@ -92,4 +78,4 @@ def networks():
     e.g., predictasearch networks
     """
     results: Dict = client.get_supported_networks()
-    click.echo(json.dumps(obj=results, indent=4))
+    pprint(results)
