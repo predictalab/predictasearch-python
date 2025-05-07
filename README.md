@@ -48,7 +48,7 @@ or
 predictasearch phone +1234567890 --filter facebook,tiktok
 ```
 
-### List Supported Networks
+#### List Supported Networks
 ```commandline
 predictasearch networks
 ```
