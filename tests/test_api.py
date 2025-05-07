@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from predictasearch.__api import PredictaSearch
+from predictasearch import PredictaSearch
 
 
 @pytest.fixture
