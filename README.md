@@ -9,7 +9,7 @@ predictasearch is a Python library that interacts with the PredictaSearch API to
 ## Quick Start
 
 ### Implementation
-```bash
+```python
 import os
 from predictasearch import PredictaSearch
 
