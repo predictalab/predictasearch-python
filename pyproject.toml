@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "predictasearch"
-version = "1.0.0"
+version = "2.0.0"
 description = "Python library and command-line utility for Predicta Search API"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -29,7 +29,7 @@ Repository = "https://github.com/predictalab/predictasearch-python"
 Issues = "https://github.com/predictalab/predictasearch-python/issues"
 
 [project.scripts]
-predictasearch = "predictasearch.__cli:cli"
+predictasearch = "predictasearch._app:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]

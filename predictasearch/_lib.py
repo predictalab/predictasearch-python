@@ -1,8 +1,12 @@
-from rich import print as rprint
 from typing import Union, List
 from typing import Dict, Any, Optional, Set
+
+from rich.console import Console
 from rich.tree import Tree
 
+
+
+console = Console(highlight=True)
 
 def parse_network_filters(value: Optional[str]) -> Optional[List[str]]:
     """
@@ -57,7 +61,7 @@ def print_tree(
             node = root.add(platform.capitalize())
             _build_tree(record=record, parent=node, exclude_keys={"platform"})
 
-    rprint(root)
+    console.print(root)
 
 
 

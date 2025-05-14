@@ -1,3 +1,3 @@
-from .__api import PredictaSearch
+from ._api import PredictaSearch
 
 __all__ = ["PredictaSearch"]

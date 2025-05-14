@@ -3,10 +3,10 @@ from typing import Optional, List, Dict
 
 import rich_click as click
 
-from .__api import PredictaSearch
-from .__lib import parse_network_filters, print_tree, rprint
+from ._api import PredictaSearch
+from ._lib import console, parse_network_filters, print_tree
 
-client = PredictaSearch(api_key=os.environ.get("PREDICTA_API_KEY"))
+client = PredictaSearch(api_key=os.environ["PREDICTA_API_KEY"])
 
 
 @click.group()
@@ -24,10 +24,12 @@ client = PredictaSearch(api_key=os.environ.get("PREDICTA_API_KEY"))
 @click.pass_context
 def cli(ctx: click.Context, filter: Optional[str], pretty: Optional[bool]):
     """
-    PredictaSearch CLI
+    PredictaSearch
 
     Get the digital footprint from an email or phone number.
     """
+
+    console.set_window_title("Predicta Search - Get the digital footprint from an email or phone number.")
     ctx.ensure_object(dict)
     ctx.obj["filter"] = filter
     ctx.obj["pretty"] = pretty
@@ -45,7 +47,7 @@ def email(ctx: click.Context, email: str):
     parsed_networks: Optional[List[str]] = parse_network_filters(value=ctx.obj.get("filter"))
     results: List = client.search_by_email(email=email, networks=parsed_networks)
     if ctx.obj.get("pretty"):
-        rprint(results)
+        console.print(results)
     else:
         print_tree(root_label=email, data=results)
 
@@ -62,7 +64,7 @@ def phone(ctx: click.Context, phone: str):
     parsed_networks: Optional[List[str]] = parse_network_filters(value=ctx.obj.get("filter"))
     results: List = client.search_by_phone(phone=phone, networks=parsed_networks)
     if ctx.obj.get("pretty"):
-        rprint(results)
+        console.print(results)
     else:
         print_tree(root_label=phone, data=results)
 
@@ -77,7 +79,7 @@ def networks(ctx: click.Context):
     """
     results: Dict = client.get_supported_networks()
     if ctx.obj.get("pretty"):
-        rprint(results)
+        console.print(results)
     else:
         print_tree(root_label="Networks", data=results)
 
