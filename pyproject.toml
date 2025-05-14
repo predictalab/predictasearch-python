@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "predictasearch"
+version = "2.0.0"
+description = "Python library and command-line utility for Predicta Search API"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "Predicta Lab", email = "contact@predictalab.com" }
+]
+license = { text = "MIT" }
+dependencies = [
+    "requests >= 2.32.3",
+    "rich-click >= 1.8.8"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest >=7.4.0",
+    "pytest-mock >=3.12.0"
+]
+
+[project.urls]
+Homepage = "https://predictasearch.com"
+Repository = "https://github.com/predictalab/predictasearch-python"
+Issues = "https://github.com/predictalab/predictasearch-python/issues"
+
+[project.scripts]
+predictasearch = "predictasearch._app:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
