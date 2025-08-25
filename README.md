@@ -4,6 +4,8 @@ predictasearch is a Python library that interacts with the PredictaSearch API to
 ## Features
 - Search by email address
 - Search by phone number
+- Search by name
+- Search by username
 - Retrieve the list of supported networks
 
 ## Quick Start
@@ -21,6 +23,12 @@ print(email_results)
 
 phone_results = client.search_by_phone("+33612345678")
 print(phone_results)
+
+name_results = client.search_by_name("John Doe")
+print(name_results)
+
+username_results = client.search_by_username("Johndoe")
+print(username_results)
 ```
 Grab your API key from https://www.predictasearch.com/
 

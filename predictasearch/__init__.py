@@ -1,5 +1,6 @@
-import requests
 from typing import Literal, Optional
+
+import requests
 
 
 class PredictaSearch:
@@ -14,6 +15,7 @@ class PredictaSearch:
     :ivar BASE_URL: The base URL of the PredictaSearch API endpoint.
     :type BASE_URL: str
     """
+
     BASE_URL: str = "https://dev.predictasearch.com/"
 
     def __init__(self, api_key: str):
@@ -33,7 +35,12 @@ class PredictaSearch:
         self.api_key: str = api_key
         self.headers: dict = {"x-api-key": self.api_key}
 
-    def search(self, query: str, query_type: Literal["email", "phone"], networks: Optional[list[str]] = None) -> list:
+    def _search(
+        self,
+        query: str,
+        query_type: Literal["email", "phone", "name", "username"],
+        networks: Optional[list[str]] = None,
+    ) -> list:
         """
         Executes a search query against the API with the provided parameters. This method allows querying
         based on a specific type and optionally limits the search scope to a set of networks.
@@ -61,8 +68,8 @@ class PredictaSearch:
             json={
                 "networks": networks or ["all"],
                 "query": query,
-                "query_type": query_type
-            }
+                "query_type": query_type,
+            },
         )
 
         return response.json()
@@ -85,7 +92,7 @@ class PredictaSearch:
         :return: A list of records that match the provided email and optional network filters.
         :rtype: list
         """
-        return self.search(query=email, query_type="email", networks=networks)
+        return self._search(query=email, query_type="email", networks=networks)
 
     def search_by_phone(self, phone: str, networks: Optional[list[str]] = None) -> list:
         """
@@ -105,7 +112,49 @@ class PredictaSearch:
         :return: A list of records that match the provided email and optional network filters.
         :rtype: list
         """
-        return self.search(query=phone, query_type="phone", networks=networks)
+        return self._search(query=phone, query_type="phone", networks=networks)
+
+    def search_by_name(self, name: str, networks: Optional[list[str]] = None) -> list:
+        """
+        Search for records by name and optionally limited to a list
+        of networks.
+
+        This method performs a search operation using the provided name as the query. It
+        allows filtering of the results by specifying a list of networks to limit the
+        search scope. The results returned will be a list of records that match the
+        search parameters.
+
+        :param name: The name to search for.
+        :type name: str
+        :param networks: A list of network names to limit the search to. Defaults to None
+            if no specific networks are provided.
+        :type networks: Optional[list[str]]
+        :return: A list of records that match the provided name and optional network filters.
+        :rtype: list
+        """
+        return self._search(query=name, query_type="name", networks=networks)
+
+    def search_by_username(
+        self, username: str, networks: Optional[list[str]] = None
+    ) -> list:
+        """
+        Search for records by username and optionally limited to a list
+        of networks.
+
+        This method performs a search operation using the provided username as the query. It
+        allows filtering of the results by specifying a list of networks to limit the
+        search scope. The results returned will be a list of records that match the
+        search parameters.
+
+        :param username: The username to search for.
+        :type username: str
+        :param networks: A list of network names to limit the search to. Defaults to None
+            if no specific networks are provided.
+        :type networks: Optional[list[str]]
+        :return: A list of records that match the provided username and optional network filters.
+        :rtype: list
+        """
+        return self._search(query=username, query_type="username", networks=networks)
 
     def get_supported_networks(self) -> dict:
         """
@@ -121,8 +170,7 @@ class PredictaSearch:
         """
         route: str = "api/networks"
         response: requests.Response = requests.get(
-            url=f"{self.BASE_URL}{route}",
-            headers=self.headers
+            url=f"{self.BASE_URL}{route}", headers=self.headers
         )
 
         return response.json()
