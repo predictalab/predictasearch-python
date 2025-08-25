@@ -19,5 +19,5 @@ repos:
   rev: 0.29.2
   hooks:
     - id: pyrefly-typecheck
-      stages: [ commit ]
+      stages: [ pre-commit ]
       pass_filenames: true
