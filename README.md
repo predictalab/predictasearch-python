@@ -69,8 +69,9 @@ The credit is spent only if a source answered, and refunded when the search is
 interrupted. If the connection drops, `stream_search` reopens it where it
 stopped; after `max_retries` reopenings in a row (5 by default) without a new
 event, it raises `APIConnectionError`. To resume in another process, keep the
-last `event.id` and pass it as `last_event_id`. A search can be read again,
-from the start, for an hour after its end.
+last `event.id` and pass it as `last_event_id`; past the final event of an
+ended search, nothing is yielded. A search can be read again, from the start,
+for an hour after its end.
 
 ### Errors
 The v2 methods raise an exception when the API refuses, each one deriving from

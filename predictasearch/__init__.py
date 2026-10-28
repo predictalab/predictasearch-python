@@ -279,7 +279,8 @@ class PredictaSearch:
 
         :param last_event_id: Resume after this event, from a previous reading.
             Without it, the whole search is read from the start: within an hour
-            after its end, a search can be read again.
+            after its end, a search can be read again. Past its final event,
+            nothing is yielded.
         :raises NotFoundError: Unknown search, or results expired.
         :raises PredictaSearchError: The stream was refused or kept failing.
         """
@@ -290,6 +291,9 @@ class PredictaSearch:
             last_error: PredictaSearchError
             try:
                 with self._open_stream(search_id, last_event_id) as response:
+                    # The search has ended and nothing follows last_event_id.
+                    if response.status_code == 204:
+                        return
                     lines = (line.decode("utf-8") for line in response.iter_lines())
                     for sse in decoder.iter_events(lines):
                         event = parse_event(sse)

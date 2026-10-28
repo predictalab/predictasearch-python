@@ -7,7 +7,8 @@
 - The streaming search of the API v2: `start_search()` starts a search and
   `stream_search()` yields its events (`ResultEvent`, `SourceErrorEvent`,
   `ProgressEvent`, then `DoneEvent` or `FailedEvent`), reopening a dropped
-  connection where it stopped.
+  connection where it stopped. Resuming past the final event of an ended
+  search yields nothing (the API answers 204).
 - The v2 methods raise a `PredictaSearchError` subclass when the API refuses
   (`AuthenticationError`, `InsufficientCreditsError`, `RateLimitError`...).
   The v1 methods are unchanged.

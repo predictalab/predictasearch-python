@@ -184,3 +184,10 @@ def test_v1_still_returns_the_error_body(client, api):
     api.post(f"{URL}/api/search", json=detail, status=402)
 
     assert client.search_by_email("john.doe@gmail.com") == detail
+
+
+def test_resuming_after_the_end_yields_nothing(client, api, sleeps):
+    api.get(STREAM_URL, status=204)
+
+    assert list(client.stream_search("abc", last_event_id=2)) == []
+    assert len(api.calls) == 1 and sleeps == []
