@@ -7,15 +7,13 @@ name = "predictasearch"
 version = "1.1.0"
 description = "The official Python client of the Predicta Search API"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Predicta Lab", email = "contact@predictalab.com" }]
-dependencies = ["requests>=2.32.3"]
+dependencies = ["requests>=2.33.0"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

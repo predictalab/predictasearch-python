@@ -2,6 +2,8 @@
 
 ## 1.1.0
 
+- Python 3.11 or later, and requests 2.33.0 or later: the releases that fix
+  the vulnerabilities of 2.32.x, and require Python 3.10 themselves.
 - The streaming search of the API v2: `start_search()` starts a search and
   `stream_search()` yields its events (`ResultEvent`, `SourceErrorEvent`,
   `ProgressEvent`, then `DoneEvent` or `FailedEvent`), reopening a dropped
