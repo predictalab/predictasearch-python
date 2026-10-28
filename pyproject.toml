@@ -4,18 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "predictasearch"
-version = "1.0.2"
+version = "1.1.0"
 description = "The official Python client of the Predicta Search API"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Predicta Lab", email = "contact@predictalab.com" }]
-dependencies = ["requests>=2.32.3"]
+dependencies = ["requests>=2.33.0"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -51,9 +49,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.pytest.ini_options]
-env_files = [
-    ".env.example",
-]
+testpaths = ["tests"]
 
 [tool.pyrefly]
 project-includes = ["**/*"]

@@ -174,3 +174,61 @@ class PredictaSearch:
         )
 
         return response.json()
+
+    def start_search(
+        self,
+        query: str,
+        query_type: Literal["email", "phone", "name", "username"],
+        networks: Optional[list[str]] = None,
+    ) -> requests.Response:
+        """
+        Starts a search with the API v2 and returns the response as it is.
+
+        The API answers at once: 202 with the search_id to read the results with
+        :meth:`stream_search`, or 200 when the same search is already running.
+
+        :param query: The email address, phone number, name or username to search.
+        :param query_type: The type of the query.
+        :param networks: The networks to search, all of them when not given.
+        :return: The response of POST /api/v2/search.
+        :rtype: requests.Response
+        """
+        route: str = "api/v2/search"
+        return requests.post(
+            url=f"{self.BASE_URL}{route}",
+            headers=self.headers,
+            json={
+                "networks": networks or ["all"],
+                "query": query,
+                "query_type": query_type,
+            },
+        )
+
+    def stream_search(
+        self, search_id: str, last_event_id: Optional[int] = None
+    ) -> requests.Response:
+        """
+        Opens the event stream of a search started with :meth:`start_search`, and
+        returns the response as it is, its body still to be read.
+
+        The body is a Server-Sent Events stream: one event per source that finds
+        something, progress every 5 seconds, then ``done`` or ``failed``. Close
+        the response once read, with ``with client.stream_search(...) as response:``.
+
+        :param search_id: The search_id given by :meth:`start_search`.
+        :param last_event_id: Resume after this event, after a dropped connection.
+            Once the search has ended, the API answers 204 when no event follows.
+        :return: The response of GET /api/v2/search/{search_id}.
+        :rtype: requests.Response
+        """
+        route: str = f"api/v2/search/{search_id}"
+        headers: dict = dict(self.headers)
+        if last_event_id is not None:
+            headers["Last-Event-ID"] = str(last_event_id)
+        return requests.get(
+            url=f"{self.BASE_URL}{route}",
+            headers=headers,
+            stream=True,
+            # The API pings every 15 s: a minute of silence is a dead connection.
+            timeout=(10, 60),
+        )
