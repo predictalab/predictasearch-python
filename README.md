@@ -7,7 +7,7 @@ predictasearch is a Python library that interacts with the PredictaSearch API to
 - Search by name
 - Search by username
 - Retrieve the list of supported networks
-- Streaming search (API v2): receive each source's profiles the moment it answers
+- Streaming search (API v2): start a search, then read each source's profiles the moment it answers
 
 ## Quick Start
 ```bash
@@ -35,61 +35,77 @@ Grab your API key from https://www.predictasearch.com/
 
 ## Streaming search (API v2)
 The methods above wait for every source before answering. The v2 search gives
-each source's profiles the moment it answers:
+each source's profiles the moment it answers, in two calls that return the
+API's `requests.Response` as it is:
+
+- `start_search(query, query_type, networks=None)`: `POST /api/v2/search`. It
+  answers at once, 202 with the `search_id` (200 if the same search is already
+  running, without another credit).
+- `stream_search(search_id, last_event_id=None)`: `GET /api/v2/search/{search_id}`,
+  a Server-Sent Events stream: one `result` event per source that finds
+  something, `source_error` per source that cannot answer, `progress` every
+  5 seconds, then `done` or `failed`. Its body is left unread, to be read as it
+  arrives.
+
+The routes and their status codes are described at
+https://dev.predictasearch.com/redoc.
+
+### Reading a stream, and resuming it
+A connection can drop before the end. Keep the `id` of the last event read and
+open the stream again with `last_event_id`: it resumes right after it. Once the
+search has ended, the API answers 204 when no event follows.
+
 ```python
-from predictasearch import DoneEvent, FailedEvent, ResultEvent
+import json
+import time
 
-job = client.start_search("example@email.com", "email")
+import requests
 
-for event in client.stream_search(job.search_id):
-    if isinstance(event, ResultEvent):
-        print(event.network, event.data)
-    elif isinstance(event, DoneEvent):
-        print(f"Done: {event.found} sources found something")
-    elif isinstance(event, FailedEvent):
-        print(f"Interrupted ({event.reason}), credit refunded")
+
+def read_events(response):
+    """Yields the (id, event, data) of a Server-Sent Events stream."""
+    fields = {}
+    for line in response.iter_lines():
+        line = line.decode("utf-8")
+        if line.startswith(":"):
+            continue  # a ping, sent every 15 s
+        if line:
+            name, _, value = line.partition(": ")
+            fields[name] = value
+        elif "event" in fields:
+            yield int(fields["id"]), fields["event"], json.loads(fields["data"])
+            fields = {}
+
+
+def search(client, query, query_type):
+    started = client.start_search(query, query_type)
+    started.raise_for_status()
+    search_id = started.json()["search_id"]
+
+    last_id = None
+    while True:
+        try:
+            with client.stream_search(search_id, last_event_id=last_id) as response:
+                if response.status_code == 204:
+                    return  # the search has ended: nothing after last_id
+                response.raise_for_status()
+                for last_id, event, data in read_events(response):
+                    yield event, data
+                    if event in ("done", "failed"):
+                        return
+        except requests.ConnectionError:
+            pass  # dropped: reopen after the last event received
+        time.sleep(3)
+
+
+for event, data in search(client, "example@email.com", "email"):
+    if event == "result":
+        print(data["network"], data["data"])
 ```
 
-`start_search(query, query_type, networks=None)` answers at once with a
-`SearchJob`: its `search_id`, the number of sources queried (`total`), and
-`networks_rejected`. Sending the same search while it runs gives back that
-search, with `already_running` set and no credit used.
-
-`stream_search(search_id)` yields, until the search ends:
-
-| Event | When |
-|---|---|
-| `ResultEvent(id, network, data)` | a source found profiles |
-| `SourceErrorEvent(id, network, reason)` | a source could not answer |
-| `ProgressEvent(id, done, total, found, failed)` | every few seconds |
-| `DoneEvent(id, found, failed, credit_debited, credit_balance)` | the search is complete, always last |
-| `FailedEvent(id, reason, credit_refunded, credit_balance)` | the search was interrupted on our side, always last |
-
-The credit is spent only if a source answered, and refunded when the search is
-interrupted. If the connection drops, `stream_search` reopens it where it
-stopped; after `max_retries` reopenings in a row (5 by default) without a new
-event, it raises `APIConnectionError`. To resume in another process, keep the
-last `event.id` and pass it as `last_event_id`; past the final event of an
-ended search, nothing is yielded. A search can be read again, from the start,
-for an hour after its end.
-
-### Errors
-The v2 methods raise an exception when the API refuses, each one deriving from
-`PredictaSearchError` and carrying `status_code` and `detail`:
-
-| Exception | When |
-|---|---|
-| `AuthenticationError` | 401: the API key is missing or invalid |
-| `InsufficientCreditsError` | 402: no credit left |
-| `PermissionDeniedError` | 403: the account is locked, or the search is not allowed |
-| `NotFoundError` | 404: unknown search, or its results expired |
-| `InvalidRequestError` | 400 or 422: the query does not match its type, or no network can run it |
-| `RateLimitError` | 429: too many searches running at once; `retry_after` gives the wait in seconds |
-| `ServerError` | 5xx: the API failed or is under maintenance |
-| `APIConnectionError` | the API could not be reached, or did not answer in time |
-
-The methods above, on the v1 search, are unchanged: they return the API's
-answer as it is, `{"detail": ...}` included.
+`stream_search` waits up to a minute for the next line: the API pings every
+15 seconds, so a longer silence raises `requests.ConnectionError`, a dead
+connection to reopen.
 
 ## Installation
 To install the Predicta Search library, simply:

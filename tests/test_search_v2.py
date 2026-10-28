@@ -1,23 +1,13 @@
 import json
 
 import pytest
-import requests
 import responses
 
-from predictasearch import (
-    APIConnectionError,
-    DoneEvent,
-    FailedEvent,
-    NotFoundError,
-    PredictaSearch,
-    ProgressEvent,
-    RateLimitError,
-    ResultEvent,
-    SearchJob,
-)
+from predictasearch import PredictaSearch
 
 URL = "https://dev.predictasearch.com"
-PROFILES = [{"platform": "github", "username": "johndoe"}]
+STREAM_URL = f"{URL}/api/v2/search/abc"
+JOB = {"search_id": "abc", "status": "running", "total": 3, "networks_rejected": []}
 
 
 @pytest.fixture
@@ -31,152 +21,59 @@ def api():
         yield mock
 
 
-def _body(api):
-    return json.loads(api.calls[0].request.body)
-
-
-JOB = {"search_id": "abc", "status": "running", "total": 3, "networks_rejected": []}
-STREAM_URL = f"{URL}/api/v2/search/abc"
-
-
-def _sse(*events):
-    blocks = ["retry: 3000\n\n"]
-    for id, name, data in events:
-        blocks.append(f"id: {id}\nevent: {name}\ndata: {json.dumps(data)}\n\n")
-    return "".join(blocks)
-
-
-RESULT = (0, "result", {"network": "github", "data": PROFILES})
-PROGRESS = (1, "progress", {"done": 1, "total": 3, "found": 1, "failed": 0})
-DONE = (
-    2,
-    "done",
-    {"found": 1, "failed": 1, "credit_debited": True, "credit_balance": 4},
-)
-
-
-@pytest.fixture
-def sleeps(monkeypatch):
-    waited = []
-    monkeypatch.setattr("predictasearch.time.sleep", waited.append)
-    return waited
-
-
-def test_start_search_reserves_a_new_search(client, api):
+def test_start_search_posts_the_query_and_returns_the_response(client, api):
     api.post(f"{URL}/api/v2/search", json=JOB, status=202)
 
-    job = client.start_search("johndoe", "username")
+    response = client.start_search("johndoe", "username", ["github"])
 
-    assert job == SearchJob("abc", "running", 3, [], already_running=False)
-    assert _body(api) == {
+    assert response.status_code == 202 and response.json() == JOB
+    request = api.calls[0].request
+    assert request.headers["x-api-key"] == "key"
+    assert json.loads(request.body) == {
+        "networks": ["github"],
         "query": "johndoe",
         "query_type": "username",
-        "networks": ["all"],
     }
 
 
-def test_start_search_gives_the_search_already_running(client, api):
-    api.post(f"{URL}/api/v2/search", json=JOB, status=200)
+def test_start_search_covers_every_network_by_default(client, api):
+    api.post(f"{URL}/api/v2/search", json=JOB, status=202)
 
-    assert client.start_search("johndoe", "username").already_running
+    client.start_search("johndoe", "username")
 
-
-def test_too_many_searches_at_once(client, api):
-    api.post(
-        f"{URL}/api/v2/search",
-        json={"detail": "Too many"},
-        status=429,
-        headers={"Retry-After": "30"},
-    )
-
-    with pytest.raises(RateLimitError) as raised:
-        client.start_search("johndoe", "username")
-
-    assert raised.value.retry_after == 30
+    assert json.loads(api.calls[0].request.body)["networks"] == ["all"]
 
 
-def test_stream_gives_every_event_until_done(client, api):
-    api.get(STREAM_URL, body=_sse(RESULT, PROGRESS, DONE))
+def test_an_error_is_returned_as_it_is(client, api):
+    api.post(f"{URL}/api/v2/search", json={"detail": "No credit"}, status=402)
 
-    events = list(client.stream_search("abc"))
+    response = client.start_search("johndoe", "username")
 
-    assert [type(e) for e in events] == [ResultEvent, ProgressEvent, DoneEvent]
-    assert events[0].data == PROFILES
-    assert events[-1].credit_balance == 4
-    assert api.calls[0].request.headers["Accept"] == "text/event-stream"
-    assert "Last-Event-ID" not in api.calls[0].request.headers
+    assert response.status_code == 402 and response.json() == {"detail": "No credit"}
 
 
-def test_stream_resumes_after_a_given_event(client, api):
-    api.get(STREAM_URL, body=_sse(DONE))
+def test_stream_search_returns_the_stream_unread(client, api):
+    body = 'retry: 3000\n\nid: 0\nevent: done\ndata: {"found": 0}\n\n'
+    api.get(STREAM_URL, body=body, content_type="text/event-stream")
 
-    list(client.stream_search("abc", last_event_id=1))
+    with client.stream_search("abc") as response:
+        assert response.status_code == 200
+        assert b"".join(response.iter_content()).decode() == body
 
-    assert api.calls[0].request.headers["Last-Event-ID"] == "1"
-
-
-def test_a_dropped_stream_is_reopened_where_it_stopped(client, api, sleeps):
-    api.get(STREAM_URL, body=_sse(RESULT, PROGRESS))
-    api.get(STREAM_URL, body=_sse(DONE))
-
-    events = list(client.stream_search("abc"))
-
-    assert [e.id for e in events] == [0, 1, 2]
-    assert api.calls[1].request.headers["Last-Event-ID"] == "1"
-    assert sleeps == [3.0]
+    request = api.calls[0].request
+    assert request.headers["x-api-key"] == "key"
+    assert "Last-Event-ID" not in request.headers
+    assert request.req_kwargs["stream"] is True
+    assert request.req_kwargs["timeout"] == (10, 60)
 
 
-def test_a_broken_connection_is_reopened(client, api, sleeps):
-    api.get(STREAM_URL, body=requests.ConnectionError("reset"))
-    api.get(STREAM_URL, body=_sse(RESULT, PROGRESS, DONE))
+def test_stream_search_resumes_after_an_event(client, api):
+    api.get(STREAM_URL, status=204)
 
-    assert len(list(client.stream_search("abc"))) == 3
-    assert sleeps == [3.0]
+    response = client.stream_search("abc", last_event_id=4)
 
-
-def test_a_rate_limited_reopening_waits_as_asked(client, api, sleeps):
-    api.get(
-        STREAM_URL,
-        json={"detail": "Too many"},
-        status=429,
-        headers={"Retry-After": "60"},
-    )
-    api.get(STREAM_URL, body=_sse(DONE))
-
-    list(client.stream_search("abc"))
-
-    assert sleeps == [60]
-
-
-def test_an_expired_search_is_not_retried(client, api, sleeps):
-    api.get(STREAM_URL, json={"detail": "Not found"}, status=404)
-
-    with pytest.raises(NotFoundError):
-        list(client.stream_search("abc"))
-
-    assert sleeps == []
-
-
-def test_a_stream_that_keeps_dropping_gives_up(client, api, sleeps):
-    api.get(STREAM_URL, body=_sse())
-
-    with pytest.raises(APIConnectionError):
-        list(client.stream_search("abc", max_retries=2))
-
-    assert len(api.calls) == 3
-
-
-def test_a_failed_search_ends_the_stream(client, api):
-    failed = (
-        0,
-        "failed",
-        {"reason": "shutdown", "credit_refunded": True, "credit_balance": 5},
-    )
-    api.get(STREAM_URL, body=_sse(failed))
-
-    events = list(client.stream_search("abc"))
-
-    assert events == [FailedEvent(0, "shutdown", True, 5)]
+    assert response.status_code == 204
+    assert api.calls[0].request.headers["Last-Event-ID"] == "4"
 
 
 def test_v1_still_returns_the_error_body(client, api):
@@ -184,10 +81,3 @@ def test_v1_still_returns_the_error_body(client, api):
     api.post(f"{URL}/api/search", json=detail, status=402)
 
     assert client.search_by_email("john.doe@gmail.com") == detail
-
-
-def test_resuming_after_the_end_yields_nothing(client, api, sleeps):
-    api.get(STREAM_URL, status=204)
-
-    assert list(client.stream_search("abc", last_event_id=2)) == []
-    assert len(api.calls) == 1 and sleeps == []
