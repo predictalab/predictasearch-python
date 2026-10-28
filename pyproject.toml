@@ -1,3 +1,41 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "predictasearch"
+version = "1.0.2"
+description = "The official Python client of the Predicta Search API"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Predicta Lab", email = "contact@predictalab.com" }]
+dependencies = ["requests>=2.32.3"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+    "Natural Language :: English",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Intended Audience :: Developers",
+    "Development Status :: 5 - Production/Stable",
+]
+
+[project.urls]
+Homepage = "https://www.predictasearch.com/"
+Repository = "https://github.com/predictalab/predictasearch-python"
+Issues = "https://github.com/predictalab/predictasearch-python/issues"
+Changelog = "https://github.com/predictalab/predictasearch-python/blob/main/CHANGELOG.md"
+
+[tool.setuptools]
+packages = ["predictasearch"]
+
 [tool.black]
 line-length = 88
 
