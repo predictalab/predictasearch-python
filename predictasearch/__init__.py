@@ -1,6 +1,63 @@
-from typing import Literal, Optional
+import time
+from typing import Dict, Iterator, List, Literal, Optional
 
 import requests
+
+from predictasearch.errors import (
+    APIConnectionError,
+    APIError,
+    AuthenticationError,
+    InsufficientCreditsError,
+    InvalidRequestError,
+    NotFoundError,
+    PermissionDeniedError,
+    PredictaSearchError,
+    RateLimitError,
+    ServerError,
+    error_from_response,
+)
+from predictasearch.events import (
+    DoneEvent,
+    FailedEvent,
+    ProgressEvent,
+    ResultEvent,
+    SearchEvent,
+    SourceErrorEvent,
+    parse_event,
+)
+from predictasearch.models import (
+    QueryType,
+    RejectedNetwork,
+    SearchJob,
+    SearchResult,
+    SearchStatus,
+)
+from predictasearch.sse import SSEDecoder
+
+__all__ = [
+    "PredictaSearch",
+    "APIConnectionError",
+    "APIError",
+    "AuthenticationError",
+    "InsufficientCreditsError",
+    "InvalidRequestError",
+    "NotFoundError",
+    "PermissionDeniedError",
+    "PredictaSearchError",
+    "RateLimitError",
+    "ServerError",
+    "DoneEvent",
+    "FailedEvent",
+    "ProgressEvent",
+    "ResultEvent",
+    "SearchEvent",
+    "SourceErrorEvent",
+    "QueryType",
+    "RejectedNetwork",
+    "SearchJob",
+    "SearchResult",
+    "SearchStatus",
+]
 
 
 class PredictaSearch:
@@ -174,3 +231,119 @@ class PredictaSearch:
         )
 
         return response.json()
+
+    def start_search(
+        self,
+        query: str,
+        query_type: QueryType,
+        networks: Optional[List[str]] = None,
+    ) -> SearchJob:
+        """Start a v2 search and return at once; read it with :meth:`stream_search`.
+
+        One credit is reserved, and refunded if no source could answer. Sending
+        the same search while it runs returns that search, without another credit.
+
+        :raises RateLimitError: Too many searches running for this key.
+        :raises PredictaSearchError: The search was refused or could not be sent.
+        """
+        response = self._v2_request(
+            "POST",
+            "api/v2/search",
+            json={
+                "query": query,
+                "query_type": query_type,
+                "networks": networks or ["all"],
+            },
+        )
+        body = response.json()
+        return SearchJob(
+            search_id=body["search_id"],
+            status=body["status"],
+            total=body["total"],
+            networks_rejected=body["networks_rejected"],
+            already_running=response.status_code == 200,
+        )
+
+    def stream_search(
+        self,
+        search_id: str,
+        last_event_id: Optional[int] = None,
+        max_retries: int = 5,
+    ) -> Iterator[SearchEvent]:
+        """Yield the events of a v2 search as they arrive, until it ends.
+
+        The last event is a :class:`DoneEvent` or a :class:`FailedEvent`. A
+        dropped connection is reopened where it stopped, after the delay the API
+        asks for; ``max_retries`` reopenings in a row without a new event raise
+        :class:`APIConnectionError`.
+
+        :param last_event_id: Resume after this event, from a previous reading.
+            Without it, the whole search is read from the start: within an hour
+            after its end, a search can be read again.
+        :raises NotFoundError: Unknown search, or results expired.
+        :raises PredictaSearchError: The stream was refused or kept failing.
+        """
+        decoder = SSEDecoder()
+        failures = 0
+        while True:
+            wait: Optional[float] = None
+            last_error: PredictaSearchError
+            try:
+                with self._open_stream(search_id, last_event_id) as response:
+                    lines = (line.decode("utf-8") for line in response.iter_lines())
+                    for sse in decoder.iter_events(lines):
+                        event = parse_event(sse)
+                        if event is None:
+                            continue
+                        last_event_id, failures = event.id, 0
+                        yield event
+                        if isinstance(event, (DoneEvent, FailedEvent)):
+                            return
+            except RateLimitError as error:
+                wait, last_error = error.retry_after, error
+            except (APIConnectionError, ServerError) as error:
+                last_error = error
+            except requests.RequestException as error:
+                last_error = APIConnectionError(str(error))
+            else:
+                last_error = APIConnectionError("The stream ended before the search")
+
+            failures += 1
+            if failures > max_retries:
+                raise last_error
+            time.sleep(wait if wait is not None else (decoder.retry or 3000) / 1000)
+
+    def _open_stream(
+        self, search_id: str, last_event_id: Optional[int]
+    ) -> requests.Response:
+        headers = {"Accept": "text/event-stream"}
+        if last_event_id is not None:
+            headers["Last-Event-ID"] = str(last_event_id)
+        return self._v2_request(
+            "GET", f"api/v2/search/{search_id}", headers=headers, stream=True
+        )
+
+    def _v2_request(
+        self,
+        method: str,
+        route: str,
+        json: Optional[Dict[str, object]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        stream: bool = False,
+    ) -> requests.Response:
+        try:
+            response = requests.request(
+                method,
+                url=f"{self.BASE_URL}{route}",
+                headers={**self.headers, **(headers or {})},
+                json=json,
+                stream=stream,
+                # The API pings a stream every 15 s: a minute of silence is a dead connection.
+                timeout=(10, 60),
+            )
+        except requests.RequestException as error:
+            raise APIConnectionError(str(error)) from error
+        if not response.ok:
+            with response:
+                raise error_from_response(response)
+        return response

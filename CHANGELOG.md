@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0
+
+- The streaming search of the API v2: `start_search()` starts a search and
+  `stream_search()` yields its events (`ResultEvent`, `SourceErrorEvent`,
+  `ProgressEvent`, then `DoneEvent` or `FailedEvent`), reopening a dropped
+  connection where it stopped.
+- The v2 methods raise a `PredictaSearchError` subclass when the API refuses
+  (`AuthenticationError`, `InsufficientCreditsError`, `RateLimitError`...).
+  The v1 methods are unchanged.
+
 ## 1.0.2
 
 - Python 3.9 or later. 1.0.1 declared 3.8, on which it failed to import.
