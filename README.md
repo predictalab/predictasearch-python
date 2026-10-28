@@ -47,28 +47,16 @@ API's `requests.Response` as it is:
   5 seconds, then `done` or `failed`. Its body is left unread, to be read as it
   arrives.
 
-The routes and their status codes are described at
-https://dev.predictasearch.com/redoc.
+The routes, the events and their fields are described in the API documentation:
+https://www.predictasearch.com/api-docs.
 
 ### Handling the responses: a proof of concept
 `start_search` and `stream_search` return the API's answer as it is: checking
 its status, reading the stream and resuming it are up to the caller. The code
-below does all three, and can be copied as a starting point.
-
-| Status | Meaning | What to do |
-|---|---|---|
-| 202 / 200 | Search started / the same search was already running | Read it with `stream_search` |
-| 204 | The search has ended and nothing follows `last_event_id` | Stop reading |
-| 401 | The API key is missing or invalid | Check the key |
-| 402 | No credit left | Top up the credits |
-| 403 | Account locked, or the search is not allowed | Do not retry |
-| 404 | Unknown search, or its results expired (1 h after the end) | Start a new search |
-| 422 | The query does not match its type, or no network can run it | Fix the query |
-| 429 | Too many searches running, or the stream reopened too often | Wait `Retry-After` seconds |
-| 500 / 503 | Server error, or maintenance | Retry later |
-
-Every refusal comes with a JSON body, `{"detail": "..."}`, except a 500, which
-answers in plain text.
+below does all three, and can be copied as a starting point: it stops on any
+refusal with its status and the API's reason, and waits on a 429 as the API
+asks. What each status means is described in the API documentation:
+https://www.predictasearch.com/api-docs#errors.
 
 A connection can also drop before the end. Keep the `id` of the last event read
 and open the stream again with `last_event_id`: it resumes right after it.
@@ -193,4 +181,6 @@ pip install predictasearch
 ```
 
 ## Documentation
-Documentation is available at https://dev.predictasearch.com/redoc
+The API documentation, for every route, event, status and credit rule, is at
+https://www.predictasearch.com/api-docs. The API itself answers at
+https://dev.predictasearch.com.
