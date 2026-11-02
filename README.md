@@ -10,7 +10,7 @@ predictasearch is a Python library that interacts with the PredictaSearch API to
 - Streaming search (API v2): start a search, then read each source's profiles the moment it answers
 
 ## Quick Start
-```bash
+```python
 import os
 from predictasearch import PredictaSearch
 
@@ -57,16 +57,23 @@ search has ended, the API answers 204 when no event follows.
 
 ```python
 import json
+import os
 import time
+from collections.abc import Iterator
+from typing import Literal, Optional
 
 import requests
 
+from predictasearch import PredictaSearch
 
-def read_events(response):
+Event = tuple[int, str, dict[str, object]]
+
+
+def read_events(response: requests.Response) -> Iterator[Event]:
     """Yields the (id, event, data) of a Server-Sent Events stream."""
-    fields = {}
-    for line in response.iter_lines():
-        line = line.decode("utf-8")
+    fields: dict[str, str] = {}
+    for raw in response.iter_lines():
+        line = raw.decode("utf-8")
         if line.startswith(":"):
             continue  # a ping, sent every 15 s
         if line:
@@ -77,12 +84,16 @@ def read_events(response):
             fields = {}
 
 
-def search(client, query, query_type):
+def search(
+    client: PredictaSearch,
+    query: str,
+    query_type: Literal["email", "phone", "name", "username"],
+) -> Iterator[tuple[str, dict[str, object]]]:
     started = client.start_search(query, query_type)
     started.raise_for_status()
-    search_id = started.json()["search_id"]
+    search_id: str = started.json()["search_id"]
 
-    last_id = None
+    last_id: Optional[int] = None
     while True:
         try:
             with client.stream_search(search_id, last_event_id=last_id) as response:
@@ -98,6 +109,7 @@ def search(client, query, query_type):
         time.sleep(3)
 
 
+client = PredictaSearch(api_key=os.environ["PREDICTA_API_KEY"])
 for event, data in search(client, "example@email.com", "email"):
     if event == "result":
         print(data["network"], data["data"])
