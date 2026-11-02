@@ -1,15 +1,21 @@
 # predictasearch: The official Python library and CLI for Predicta Search
-predictasearch is a Python library that interacts with the PredictaSearch API to perform searches on emails and phone numbers, as well as retrieve the list of supported networks.
+predictasearch is a Python library that interacts with the PredictaSearch API to search by email address, phone number, name or username, and to retrieve the list of supported networks.
 
 ## Features
-- Search by email address
-- Search by phone number
-- Search by name
-- Search by username
-- Retrieve the list of supported networks
-- Streaming search (API v2): start a search, then read each source's profiles the moment it answers
+The client speaks both versions of the search API:
 
-## Quick Start
+| | API v1 | API v2 (streaming) |
+|---|---|---|
+| Methods | `search_by_email`, `search_by_phone`, `search_by_name`, `search_by_username` | `start_search`, `stream_search` |
+| Answer | Every source's profiles in one response, once all sources have answered | Each source's profiles the moment it answers |
+| Returns | The parsed JSON | The `requests.Response`, as it is |
+
+`get_supported_networks()` lists the networks either version can search.
+
+## Quick Start (API v1)
+Each v1 method sends one request, `POST /api/search`, and returns once every
+source has answered:
+
 ```python
 import os
 from predictasearch import PredictaSearch
@@ -34,7 +40,7 @@ print(username_results)
 Grab your API key from https://www.predictasearch.com/
 
 ## Streaming search (API v2)
-The methods above wait for every source before answering. The v2 search gives
+The v1 methods above wait for every source before answering. The v2 search gives
 each source's profiles the moment it answers, in two calls that return the
 API's `requests.Response` as it is:
 
