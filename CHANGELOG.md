@@ -9,7 +9,7 @@
 - Python 3.11 or later, and requests 2.33.0 or later: the releases that fix
   the vulnerabilities of 2.32.x, and require Python 3.10 themselves.
 
-## 1.0.2
+## 1.0.2 (not published: its changes ship with 1.1.0)
 
 - Python 3.9 or later. 1.0.1 declared 3.8, on which it failed to import.
 - Packaging moves to `pyproject.toml`; `setup.py` is removed. The package
