@@ -84,7 +84,7 @@ its status, reading the stream and resuming it are up to the caller. The code
 below does all three, and can be copied as a starting point: it stops on any
 refusal with its status and the API's reason, and waits on a 429 as the API
 asks. What each status means is described in the API documentation:
-<https://www.predictasearch.com/api-docs#errors>.
+<https://www.predictasearch.com/api-docs/v1/errors>.
 
 A connection can also drop before the end. Keep the `id` of the last event read
 and open the stream again with `last_event_id`: it resumes right after it. Once
