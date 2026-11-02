@@ -1,16 +1,22 @@
 # predictasearch: The official Python library and CLI for Predicta Search
-predictasearch is a Python library that interacts with the PredictaSearch API to perform searches on emails and phone numbers, as well as retrieve the list of supported networks.
+predictasearch is a Python library that interacts with the PredictaSearch API to search by email address, phone number, name or username, and to retrieve the list of supported networks.
 
 ## Features
-- Search by email address
-- Search by phone number
-- Search by name
-- Search by username
-- Retrieve the list of supported networks
-- Streaming search (API v2): start a search, then read each source's profiles the moment it answers
+The client speaks both versions of the search API:
 
-## Quick Start
-```bash
+| | API v1 | API v2 (streaming) |
+|---|---|---|
+| Methods | `search_by_email`, `search_by_phone`, `search_by_name`, `search_by_username` | `start_search`, `stream_search` |
+| Answer | Every source's profiles in one response, once all sources have answered | Each source's profiles the moment it answers |
+| Returns | The parsed JSON | The `requests.Response`, as it is |
+
+`get_supported_networks()` lists the networks either version can search.
+
+## Quick Start (API v1)
+Each v1 method sends one request, `POST /api/search`, and returns once every
+source has answered:
+
+```python
 import os
 from predictasearch import PredictaSearch
 
@@ -34,7 +40,7 @@ print(username_results)
 Grab your API key from https://www.predictasearch.com/
 
 ## Streaming search (API v2)
-The methods above wait for every source before answering. The v2 search gives
+The v1 methods above wait for every source before answering. The v2 search gives
 each source's profiles the moment it answers, in two calls that return the
 API's `requests.Response` as it is:
 
@@ -48,7 +54,7 @@ API's `requests.Response` as it is:
   arrives.
 
 The routes and their status codes are described at
-https://dev.predictasearch.com/redoc.
+<https://www.predictasearch.com/api-docs/>.
 
 ### Reading a stream, and resuming it
 A connection can drop before the end. Keep the `id` of the last event read and
@@ -57,16 +63,23 @@ search has ended, the API answers 204 when no event follows.
 
 ```python
 import json
+import os
 import time
+from collections.abc import Iterator
+from typing import Literal, Optional
 
 import requests
 
+from predictasearch import PredictaSearch
 
-def read_events(response):
+Event = tuple[int, str, dict[str, object]]
+
+
+def read_events(response: requests.Response) -> Iterator[Event]:
     """Yields the (id, event, data) of a Server-Sent Events stream."""
-    fields = {}
-    for line in response.iter_lines():
-        line = line.decode("utf-8")
+    fields: dict[str, str] = {}
+    for raw in response.iter_lines():
+        line = raw.decode("utf-8")
         if line.startswith(":"):
             continue  # a ping, sent every 15 s
         if line:
@@ -77,12 +90,16 @@ def read_events(response):
             fields = {}
 
 
-def search(client, query, query_type):
+def search(
+    client: PredictaSearch,
+    query: str,
+    query_type: Literal["email", "phone", "name", "username"],
+) -> Iterator[tuple[str, dict[str, object]]]:
     started = client.start_search(query, query_type)
     started.raise_for_status()
-    search_id = started.json()["search_id"]
+    search_id: str = started.json()["search_id"]
 
-    last_id = None
+    last_id: Optional[int] = None
     while True:
         try:
             with client.stream_search(search_id, last_event_id=last_id) as response:
@@ -98,6 +115,7 @@ def search(client, query, query_type):
         time.sleep(3)
 
 
+client = PredictaSearch(api_key=os.environ["PREDICTA_API_KEY"])
 for event, data in search(client, "example@email.com", "email"):
     if event == "result":
         print(data["network"], data["data"])
@@ -114,4 +132,4 @@ pip install predictasearch
 ```
 
 ## Documentation
-Documentation is available at https://dev.predictasearch.com/redoc
+Documentation is available at <https://www.predictasearch.com/api-docs/>

@@ -5,3 +5,6 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+
+# local publishing script, until the GitHub Actions workflow replaces it
+scripts/
