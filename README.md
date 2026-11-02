@@ -48,7 +48,7 @@ API's `requests.Response` as it is:
   arrives.
 
 The routes and their status codes are described at
-https://dev.predictasearch.com/redoc.
+<https://www.predictasearch.com/api-docs/>.
 
 ### Reading a stream, and resuming it
 A connection can drop before the end. Keep the `id` of the last event read and
@@ -114,4 +114,4 @@ pip install predictasearch
 ```
 
 ## Documentation
-Documentation is available at https://dev.predictasearch.com/redoc
+Documentation is available at <https://www.predictasearch.com/api-docs/>
