@@ -1,7 +1,7 @@
 name: Publish
 
-# Manual run: a <version>.dev<run id> build to TestPyPI only.
-# Tag v<version>: that version to TestPyPI, checked, then to PyPI.
+# Manual run, from any branch: a <version>.dev<run id> build to TestPyPI only.
+# Tag v<version>: that version to TestPyPI, checked, then to PyPI if the tagged commit is on main.
 on:
   workflow_dispatch:
   push:
@@ -17,6 +17,18 @@ concurrency:
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
+
+  check-main:
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: The tagged commit is on main
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "::error::$GITHUB_REF_NAME points to $GITHUB_SHA, which is not on main: merge it, then tag main. TestPyPI still gets it, PyPI does not."; exit 1; }
 
   build:
     needs: ci
@@ -97,7 +109,7 @@ jobs:
 
   pypi:
     if: github.ref_type == 'tag'
-    needs: [build, check-testpypi]
+    needs: [build, check-testpypi, check-main]
     runs-on: ubuntu-latest
     environment:
       name: pypi
